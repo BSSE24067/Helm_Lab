@@ -1,0 +1,31 @@
+name: Update Kubernetes Manifest
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  update-config:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write   
+    steps:
+      # Checkout repo
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      # Update image tag
+      - name: Update image tag
+        run: |
+          sed -i "s|image: .*product-service.*|image: your-dockerhub-username/product-service:${{ github.sha }}|g" templates/deployment.yaml
+
+      # Commit and push changes
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add .
+          git commit -m "Update image tag to ${{ github.sha }}" || echo "No changes"
+          git push
