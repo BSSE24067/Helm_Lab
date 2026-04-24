@@ -1,4 +1,4 @@
-name: Update Kubernetes Manifest
+name: CI/CD Pipeline
 
 on:
   push:
@@ -6,26 +6,47 @@ on:
       - main
 
 jobs:
-  update-config:
+  build-push-update:
     runs-on: ubuntu-latest
 
     permissions:
-      contents: write   
+      contents: write
+
     steps:
-      # Checkout repo
-      - name: Checkout repo
-        uses: actions/checkout@v4
+      # Checkout
+      - uses: actions/checkout@v4
 
-      # Update image tag
-      - name: Update image tag
-        run: |
-          sed -i "s|image: .*product-service.*|image: your-dockerhub-username/product-service:${{ github.sha }}|g" templates/deployment.yaml
+      # Setup Node
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
 
-      # Commit and push changes
-      - name: Commit changes
-        run: |
+      # Install + test
+      - run: npm install
+      - run: npm test
+
+      # Docker login
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      # Build image
+      - run: |
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/product-service:${{ github.sha }} .
+
+      # Push image
+      - run: |
+          docker push ${{ secrets.DOCKER_USERNAME }}/product-service:${{ github.sha }}
+
+      # Update Kubernetes manifest
+      - run: |
+          sed -i "s|image: .*product-service.*|image: ${{ secrets.DOCKER_USERNAME }}/product-service:${{ github.sha }}|g" templates/deployment.yaml
+
+      # Commit changes
+      - run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
           git add .
-          git commit -m "Update image tag to ${{ github.sha }}" || echo "No changes"
+          git commit -m "Update image to ${{ github.sha }}" || echo "No changes"
           git push
