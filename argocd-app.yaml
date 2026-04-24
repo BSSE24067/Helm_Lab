@@ -1,0 +1,26 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+
+metadata:
+  name: product-service-app
+  namespace: argocd   # ArgoCD is installed in this namespace
+
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/BSSE24067/Helm_Lab.git
+    targetRevision: main
+    path: kubernetes   # ArgoCD will monitor this folder in repo
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default   # app will be deployed here
+
+  syncPolicy:
+    automated:
+      prune: true        # removes deleted resources from cluster
+      selfHeal: true     # fixes manual changes automatically
+
+    syncOptions:
+      - CreateNamespace=true   # creates namespace if missing
